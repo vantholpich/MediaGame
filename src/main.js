@@ -14,7 +14,10 @@ const handTracking = new HandTracking((landmarks) => {
 
     const indexTip = landmarks[8];
     const thumbTip = landmarks[4];
-    const middleKnuckle = landmarks[9];
+
+    // Calculate pinch midpoint for accurate cursor positioning
+    const pinchX = (indexTip.x + thumbTip.x) / 2;
+    const pinchY = (indexTip.y + thumbTip.y) / 2;
 
     // Update claw position based on hand position (using middle knuckle for stability)
     // MediaPipe coordinates are normalized [0, 1]
@@ -27,7 +30,7 @@ const handTracking = new HandTracking((landmarks) => {
     const distance = Math.sqrt(dx * dx + dy * dy);
     const isPinching = distance < 0.05;
 
-    gameScene.updateHandInteraction(middleKnuckle.x, middleKnuckle.y, isPinching);
+    gameScene.updateHandInteraction(pinchX, pinchY, isPinching);
 });
 
 handTracking.start();

@@ -17,6 +17,7 @@ export class GameScene {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Floor plane for intersection
+    this.clock = new THREE.Clock();
 
     this.init();
   }
@@ -102,6 +103,7 @@ export class GameScene {
       const color = colors[Math.floor(Math.random() * colors.length)];
       const mat = new THREE.MeshStandardMaterial({ color: color });
       const prize = new THREE.Mesh(prizeGeo, mat);
+      prize.userData = { velocity: new THREE.Vector3(0, 0, 0) };
 
       // Random position on the floor
       prize.position.set(
@@ -171,46 +173,15 @@ export class GameScene {
       }
     } else {
       if (isPinching) {
-        // Try to grab
-        // Find closest prize to the target point
-        let closestDist = Infinity;
-        let closestPrize = null;
-
-        for (const prize of this.prizes) {
-          const dx = prize.position.x - targetPoint.x;
-          const dz = prize.position.z - targetPoint.z;
-          const dist = Math.sqrt(dx * dx + dz * dz);
-
-          if (dist < 1.0) { // Grabbing radius
-            if (dist < closestDist) {
-              closestDist = dist;
-              closestPrize = prize;
-            }
-          }
-        }
-
-        if (closestPrize) {
-          this.heldObject = closestPrize;
+        // Try to grab using Raycasting for precision
+        const intersects = this.raycaster.intersectObjects(this.prizes);
+        if (intersects.length > 0) {
+          this.heldObject = intersects[0].object;
         }
       }
     }
 
-    // If an object is not held, ensure it falls back to floor (simple logic)
-    for (const prize of this.prizes) {
-      if (prize !== this.heldObject) {
-        // Gravity
-        if (prize.position.y > -1.5) {
-          prize.position.y = Math.max(-1.5, prize.position.y - 0.1);
-        }
-
-        // Boundaries (Clamp to floor area)
-        const floorSize = 5; // Half size (10x10 floor)
-        if (prize.position.x < -floorSize) prize.position.x = -floorSize;
-        if (prize.position.x > floorSize) prize.position.x = floorSize;
-        if (prize.position.z < -floorSize) prize.position.z = -floorSize;
-        if (prize.position.z > floorSize) prize.position.z = floorSize;
-      }
-    }
+    // Physics is now handled in the update loop
   }
 
   checkChuteDrop(dropPoint) {
@@ -251,7 +222,59 @@ export class GameScene {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  update() {
+    const dt = this.clock.getDelta();
+    const gravity = 40.0; // Gravity strength
+
+    for (const prize of this.prizes) {
+      if (prize !== this.heldObject) {
+        // Apply gravity
+        prize.userData.velocity.y -= gravity * dt;
+
+        // Apply velocity
+        prize.position.x += prize.userData.velocity.x * dt;
+        prize.position.y += prize.userData.velocity.y * dt;
+        prize.position.z += prize.userData.velocity.z * dt;
+
+        // Floor collision
+        if (prize.position.y <= -1.5) {
+          prize.position.y = -1.5;
+          // Bounce / Friction
+          prize.userData.velocity.y = -prize.userData.velocity.y * 0.3; // Small bounce
+          if (Math.abs(prize.userData.velocity.y) < 0.1) prize.userData.velocity.y = 0;
+
+          // Ground friction
+          prize.userData.velocity.x *= 0.95;
+          prize.userData.velocity.z *= 0.95;
+        }
+
+        // Boundaries (Clamp to floor area)
+        const floorSize = 5;
+        if (prize.position.x < -floorSize) {
+          prize.position.x = -floorSize;
+          prize.userData.velocity.x *= -0.5;
+        }
+        if (prize.position.x > floorSize) {
+          prize.position.x = floorSize;
+          prize.userData.velocity.x *= -0.5;
+        }
+        if (prize.position.z < -floorSize) {
+          prize.position.z = -floorSize;
+          prize.userData.velocity.z *= -0.5;
+        }
+        if (prize.position.z > floorSize) {
+          prize.position.z = floorSize;
+          prize.userData.velocity.z *= -0.5;
+        }
+      } else {
+        // Reset velocity while held so it doesn't accumulate gravity
+        prize.userData.velocity.set(0, 0, 0);
+      }
+    }
+  }
+
   render() {
+    this.update();
     this.renderer.render(this.scene, this.camera);
   }
 }
