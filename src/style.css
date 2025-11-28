@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #000;
+  /* Black background behind video */
+  font-family: 'Arial', sans-serif;
+}
+
+canvas {
+  display: block;
+}
+
+#score {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  font-size: 32px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px #000000;
+  z-index: 10;
+  pointer-events: none;
+}
