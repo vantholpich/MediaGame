@@ -71,6 +71,8 @@ export class HandTracking {
 
         // Draw Video Feed on Background Canvas
         this.videoCtx.save();
+        this.videoCtx.translate(this.videoCanvas.width, 0);
+        this.videoCtx.scale(-1, 1);
         this.videoCtx.clearRect(0, 0, this.videoCanvas.width, this.videoCanvas.height);
         this.videoCtx.drawImage(
             results.image, 0, 0, this.videoCanvas.width, this.videoCanvas.height);
@@ -78,6 +80,8 @@ export class HandTracking {
 
         // Draw Skeleton on Foreground Canvas
         this.overlayCtx.save();
+        this.overlayCtx.translate(this.overlayCanvas.width, 0);
+        this.overlayCtx.scale(-1, 1);
         this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
 
         if (results.multiHandLandmarks) {
@@ -88,7 +92,12 @@ export class HandTracking {
 
                 // Pass data to game
                 if (this.onResultsCallback) {
-                    this.onResultsCallback(landmarks);
+                    // Create a copy of landmarks with inverted x for game logic
+                    const invertedLandmarks = landmarks.map(point => ({
+                        ...point,
+                        x: 1 - point.x
+                    }));
+                    this.onResultsCallback(invertedLandmarks);
                 }
             }
         }
