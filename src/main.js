@@ -12,25 +12,28 @@ const handTracking = new HandTracking((landmarks) => {
     // Point 9 is the middle finger knuckle (good center point)
     // Point 8 is index tip, 4 is thumb tip
 
-    const indexTip = landmarks[8];
-    const thumbTip = landmarks[4];
+    // Use the middle finger knuckle (9) as the cursor position for stability
+    const cursorX = landmarks[9].x;
+    const cursorY = landmarks[9].y;
 
-    // Calculate pinch midpoint for accurate cursor positioning
-    const pinchX = (indexTip.x + thumbTip.x) / 2;
-    const pinchY = (indexTip.y + thumbTip.y) / 2;
+    // Detect Fist (Grabbing)
+    // Check if finger tips are close to the wrist (Landmark 0)
+    const wrist = landmarks[0];
+    const tips = [landmarks[8], landmarks[12], landmarks[16], landmarks[20]]; // Index, Middle, Ring, Pinky tips
 
-    // Update claw position based on hand position (using middle knuckle for stability)
-    // MediaPipe coordinates are normalized [0, 1]
-    // gameScene.updateClawPosition(middleKnuckle.x, middleKnuckle.y);
+    let totalDistance = 0;
+    for (const tip of tips) {
+        const dx = tip.x - wrist.x;
+        const dy = tip.y - wrist.y;
+        totalDistance += Math.sqrt(dx * dx + dy * dy);
+    }
+    const avgDistance = totalDistance / tips.length;
 
-    // Detect Pinch
-    // Simple distance check in 2D (or 3D if z is reliable)
-    const dx = indexTip.x - thumbTip.x;
-    const dy = indexTip.y - thumbTip.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const isPinching = distance < 0.05;
+    // Threshold for fist detection - this might need tuning
+    // 0.15 is a rough starting point for normalized coordinates
+    const isGrabbing = avgDistance < 0.2;
 
-    gameScene.updateHandInteraction(pinchX, pinchY, isPinching);
+    gameScene.updateHandInteraction(cursorX, cursorY, isGrabbing);
 });
 
 handTracking.start();
