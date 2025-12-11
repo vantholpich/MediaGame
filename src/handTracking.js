@@ -3,6 +3,7 @@ import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import { HAND_CONNECTIONS } from '@mediapipe/hands';
 
+
 export class HandTracking {
     constructor(onResultsCallback) {
         this.onResultsCallback = onResultsCallback;
