@@ -42,6 +42,7 @@ export default function App() {
         domStorageEnabled={true}
         startInLoadingState={true}
         originWhitelist={['*']}
+        ignoreSslErrors={true}
       />
     </SafeAreaView>
   );

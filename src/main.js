@@ -12,9 +12,13 @@ const handTracking = new HandTracking((landmarks) => {
     // Point 9 is the middle finger knuckle (good center point)
     // Point 8 is index tip, 4 is thumb tip
 
-    // Use the middle finger knuckle (9) as the cursor position for stability
-    const cursorX = landmarks[9].x;
-    const cursorY = landmarks[9].y;
+    // Use the Palm Center as the cursor position
+    // Approximated by the centroid of Wrist (0), Index MCP (5), and Pinky MCP (17)
+    const palmX = (landmarks[0].x + landmarks[5].x + landmarks[17].x) / 3;
+    const palmY = (landmarks[0].y + landmarks[5].y + landmarks[17].y) / 3;
+
+    const cursorX = palmX;
+    const cursorY = palmY;
 
     // Detect Fist (Grabbing)
     // Check if finger tips are close to the wrist (Landmark 0)
