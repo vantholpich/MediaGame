@@ -64,11 +64,46 @@ export class HandTracking {
     }
 
     onResults(results) {
-        // Update canvas dimensions to match window
-        this.videoCanvas.width = window.innerWidth;
-        this.videoCanvas.height = window.innerHeight;
-        this.overlayCanvas.width = window.innerWidth;
-        this.overlayCanvas.height = window.innerHeight;
+        // Calculate scaling to cover the screen (preserve aspect ratio)
+        const videoWidth = results.image.width;
+        const videoHeight = results.image.height;
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        const videoAspect = videoWidth / videoHeight;
+        const screenAspect = screenWidth / screenHeight;
+
+        let finalWidth, finalHeight;
+        if (screenAspect > videoAspect) {
+            // Screen is wider than video -> Fit Width, Crop Height
+            finalWidth = screenWidth;
+            finalHeight = screenWidth / videoAspect;
+        } else {
+            // Screen is tall/narrow -> Fit Height, Crop Width
+            finalHeight = screenHeight;
+            finalWidth = finalHeight * videoAspect;
+        }
+
+        const offsetX = (screenWidth - finalWidth) / 2;
+        const offsetY = (screenHeight - finalHeight) / 2;
+
+        // Resize and Position Canvases
+        // We set internal resolution to match displayed size for simplicity/clarity
+        if (this.videoCanvas.width !== finalWidth || this.videoCanvas.height !== finalHeight) {
+            this.videoCanvas.width = finalWidth;
+            this.videoCanvas.height = finalHeight;
+            this.videoCanvas.style.width = `${finalWidth}px`;
+            this.videoCanvas.style.height = `${finalHeight}px`;
+            this.videoCanvas.style.left = `${offsetX}px`;
+            this.videoCanvas.style.top = `${offsetY}px`;
+
+            this.overlayCanvas.width = finalWidth;
+            this.overlayCanvas.height = finalHeight;
+            this.overlayCanvas.style.width = `${finalWidth}px`;
+            this.overlayCanvas.style.height = `${finalHeight}px`;
+            this.overlayCanvas.style.left = `${offsetX}px`;
+            this.overlayCanvas.style.top = `${offsetY}px`;
+        }
 
         // Draw Video Feed on Background Canvas
         this.videoCtx.save();
@@ -94,10 +129,35 @@ export class HandTracking {
                 // Pass data to game
                 if (this.onResultsCallback) {
                     // Create a copy of landmarks with inverted x for game logic
-                    const invertedLandmarks = landmarks.map(point => ({
-                        ...point,
-                        x: 1 - point.x
-                    }));
+                    // AND transformed to Screen Coordinates (0..1 relative to Screen)
+                    const invertedLandmarks = landmarks.map(point => {
+                        // Point x/y are 0..1 relative to FINAL canvas (Video)
+                        // Canvas is Mirrored in drawing... x is 0(right) to 1(left)?
+                        // Wait, drawConnectors handles the visual mirroring via context scale.
+                        // The 'landmarks' object itself has standard 0..1 coords (left->right).
+                        // Logic for game:
+                        // 1. Invert X (Mirroring)
+                        let x = 1 - point.x;
+                        let y = point.y;
+
+                        // 2. Map to Pixel Coordinates on the expanded canvas
+                        let pixelX = x * finalWidth;
+                        let pixelY = y * finalHeight;
+
+                        // 3. Add Offset to get Screen Pixel Coordinates
+                        let screenPixelX = pixelX + offsetX;
+                        let screenPixelY = pixelY + offsetY;
+
+                        // 4. Normalize to Screen Dimensions
+                        let screenNormX = screenPixelX / screenWidth;
+                        let screenNormY = screenPixelY / screenHeight;
+
+                        return {
+                            ...point,
+                            x: screenNormX,
+                            y: screenNormY
+                        };
+                    });
                     this.onResultsCallback(invertedLandmarks);
                 }
             }

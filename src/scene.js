@@ -24,7 +24,7 @@ export class GameScene {
 
   init() {
     // Camera Position
-    this.camera.position.set(0, 5, 10);
+    this.updateCameraPosition();
     this.camera.lookAt(0, 0, 0);
 
     // Lights
@@ -217,9 +217,21 @@ export class GameScene {
   }
 
   onWindowResize() {
+    this.updateCameraPosition();
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  updateCameraPosition() {
+    const aspect = window.innerWidth / window.innerHeight;
+    // Base distance is 10 for landscape (aspect > 1).
+    // For portrait, we increase distance to keep the floor visible.
+    // Floor width is ~10. Visible width needed ~12-14.
+    // Distance = Width / (Aspect * 2 * tan(FOV/2))
+    // Approximate scaling:
+    this.camera.position.z = Math.max(10, 8.0 / aspect);
+    this.camera.position.y = 5; // Keep height constant
   }
 
   update() {
