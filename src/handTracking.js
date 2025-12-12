@@ -70,20 +70,51 @@ export class HandTracking {
         this.overlayCanvas.width = window.innerWidth;
         this.overlayCanvas.height = window.innerHeight;
 
-        // Draw Video Feed on Background Canvas
+        const videoWidth = results.image.width;
+        const videoHeight = results.image.height;
+        const canvasWidth = this.videoCanvas.width;
+        const canvasHeight = this.videoCanvas.height;
+
+        // Calculate "object-fit: cover" dimensions
+        const videoAspectRatio = videoWidth / videoHeight;
+        const canvasAspectRatio = canvasWidth / canvasHeight;
+
+        let drawWidth, drawHeight, offsetX, offsetY;
+
+        if (canvasAspectRatio > videoAspectRatio) {
+            // Canvas is wider than video -> Fit to width
+            drawWidth = canvasWidth;
+            drawHeight = canvasWidth / videoAspectRatio;
+            offsetX = 0;
+            offsetY = (canvasHeight - drawHeight) / 2;
+        } else {
+            // Canvas is taller than video -> Fit to height
+            drawHeight = canvasHeight;
+            drawWidth = drawHeight * videoAspectRatio;
+            offsetX = (canvasWidth - drawWidth) / 2;
+            offsetY = 0;
+        }
+
+        // Draw Video Feed
         this.videoCtx.save();
         this.videoCtx.translate(this.videoCanvas.width, 0);
         this.videoCtx.scale(-1, 1);
         this.videoCtx.clearRect(0, 0, this.videoCanvas.width, this.videoCanvas.height);
         this.videoCtx.drawImage(
-            results.image, 0, 0, this.videoCanvas.width, this.videoCanvas.height);
+            results.image, offsetX, offsetY, drawWidth, drawHeight);
         this.videoCtx.restore();
 
-        // Draw Skeleton on Foreground Canvas
+        // Draw Skeleton
         this.overlayCtx.save();
+        // Clear first (using current transform or identity)
+        this.overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
+        this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+
+        // Re-apply transforms for drawing
         this.overlayCtx.translate(this.overlayCanvas.width, 0);
         this.overlayCtx.scale(-1, 1);
-        this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+        this.overlayCtx.translate(offsetX, offsetY);
+        this.overlayCtx.scale(drawWidth / this.overlayCanvas.width, drawHeight / this.overlayCanvas.height);
 
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
@@ -93,12 +124,29 @@ export class HandTracking {
 
                 // Pass data to game
                 if (this.onResultsCallback) {
-                    // Create a copy of landmarks with inverted x for game logic
-                    const invertedLandmarks = landmarks.map(point => ({
-                        ...point,
-                        x: 1 - point.x
-                    }));
-                    this.onResultsCallback(invertedLandmarks);
+                    // Create a copy of landmarks adjusted to screen coordinates
+                    // Original (0..1) is relative to VIDEO.
+                    // We need (0..1) relative to SCREEN (Canvas).
+                    // screen_x = (video_x * drawWidth + offsetX) / canvasWidth
+
+                    const adjustedLandmarks = landmarks.map(point => {
+                        // 1. Map to Screen Pixels (Unmirrored)
+                        const screenPixelX = point.x * drawWidth + offsetX;
+                        const screenPixelY = point.y * drawHeight + offsetY;
+
+                        // 2. Normalize to Screen (0..1)
+                        const screenNormX = screenPixelX / canvasWidth;
+                        const screenNormY = screenPixelY / canvasHeight;
+
+                        // 3. Invert X for Game Logic (Mirroring)
+                        return {
+                            ...point,
+                            x: 1 - screenNormX,
+                            y: screenNormY
+                        };
+                    });
+
+                    this.onResultsCallback(adjustedLandmarks);
                 }
             }
         }
