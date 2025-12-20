@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.vanthol.ClawMachine",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "The app requires access to the camera to track hand movements for gameplay.",
+        "NSMicrophoneUsageDescription": "The app requires access to the microphone for gameplay audio."
       }
     },
     "android": {
@@ -34,7 +36,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "This app uses your camera to track hand movements for gameplay. No images are saved."
+          "cameraPermission": "The app requires access to the camera to track hand movements for gameplay."
         }
       ]
     ],
